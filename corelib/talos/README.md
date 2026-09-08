@@ -1,6 +1,6 @@
 # Talos
 
-**T**orch **A**cceleration through a **L**oop-**D**riven **O**ptimization **S**kill.
+**T**orch **A**cceleration through a **L**oop-Driven **O**ptimization **S**kill.
 
 Talos is a set of skills that let a coding agent (Claude Code, Codex) speed up a
 PyTorch workload the way a performance engineer would: profile the real run,
