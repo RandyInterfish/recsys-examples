@@ -819,17 +819,21 @@ def main(argv: list[str] | None = None) -> int:
     # the workspace alongside our JSON outputs, instead of polluting the
     # directory holding the user's .nsys-rep.
     trace = ws / trace_orig.name
-    if trace.is_symlink():
+    if trace.exists() and trace.samefile(trace_orig):
+        # The trace already lives in the workspace; nothing to link.
+        pass
+    elif trace.is_symlink():
         # Includes broken links, which resolve() still reports a path for.
         if trace.resolve() != trace_orig:
             trace.unlink()
+        trace.symlink_to(trace_orig)
     elif trace.exists():
         sys.exit(
-            f"[stats] {trace} already exists and is not a link to {trace_orig}.\n"
-            f"[stats] Refusing to analyze it — remove it or pass a different "
-            f"--workspace."
+            f"[stats] {trace} already exists and is a different file than "
+            f"{trace_orig}.\n[stats] Refusing to analyze it — remove it or "
+            f"pass a different --workspace."
         )
-    if not trace.is_symlink():
+    else:
         trace.symlink_to(trace_orig)
 
     sys.stderr.write("[stats] 1/4 trace meta + hardware\n")
