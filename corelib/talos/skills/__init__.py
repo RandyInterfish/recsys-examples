@@ -145,6 +145,7 @@ def _build_observer() -> int:
 
 
 def _install_skills(agents: list[str]) -> int:
+    conflicts = 0
     for agent in agents:
         base = Path.cwd() / f".{agent}" / "skills"
         for skill in SKILLS:
@@ -153,10 +154,15 @@ def _install_skills(agents: list[str]) -> int:
                       file=sys.stderr)
                 continue
             target = base / skill.slug
-            _link(skill.root(), target)
-            print(f"  [{agent}] {skill.slug} -> {target}")
+            if _link(skill.root(), target):
+                print(f"  [{agent}] {skill.slug} -> {target}")
+            else:
+                conflicts += 1
     _print_install_hint()
-    return 0
+    if conflicts:
+        print(f"\n{conflicts} skill(s) were not linked because a file or "
+              f"directory of the same name already exists.", file=sys.stderr)
+    return 1 if conflicts else 0
 
 
 def _print_install_hint() -> None:
@@ -194,16 +200,20 @@ def _print_install_hint() -> None:
     print(f'  export PATH="{scripts_dir}:$PATH"')
 
 
-def _link(src: Path, target: Path) -> None:
+def _link(src: Path, target: Path) -> bool:
+    """Point ``target`` at ``src``. Returns False and leaves the path alone if
+    something that is not one of our symlinks is already sitting there — a
+    project's own skill of the same name is the user's, not ours to delete."""
     target.parent.mkdir(parents=True, exist_ok=True)
     if target.is_symlink():
         if Path(os.readlink(target)) == src:
-            return
+            return True
         target.unlink()
     elif target.exists():
-        if target.is_dir():
-            shutil.rmtree(target)
-        else:
-            target.unlink()
+        kind = "directory" if target.is_dir() else "file"
+        print(f"  refusing to replace existing {kind}: {target}", file=sys.stderr)
+        print("  (move or delete it yourself, then re-run)", file=sys.stderr)
+        return False
     os.symlink(src, target)
+    return True
 

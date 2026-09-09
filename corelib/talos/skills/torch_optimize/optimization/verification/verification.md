@@ -18,9 +18,21 @@ Inputs: current flag, `RUN_CMD`, and `WARMUP=20`, `STEPS=30`,
    runtime settings; discard warmup and average `STEPS` steps. Set `valid=true`
    only when these conditions, the step window, and flag maps match; otherwise
    set it to `false`.
-4. Compute `pct = (baseline_ms - candidate_ms) / baseline_ms * 100`. Set
-   `meets_min_gain=true` when `pct >= MIN_GAIN_PCT`. Write it under `e2e` in
-   `verification.json`.
+4. **Keep the per-step times of both runs — one run still tells you its own
+   noise.** For each condition record `step_spread_ms` = p90 − p10 over its
+   `STEPS` measured steps. Set `noise_ms` to the larger of the two.
+5. With `b = baseline.avg_step_ms` and `c = candidate.avg_step_ms`, compute
+   `pct = (b - c) / b * 100` and `gain_ms = b - c`. Set `meets_min_gain=true` when
+   `pct >= MIN_GAIN_PCT`, and `gain_exceeds_noise = gain_ms > noise_ms`.
+   Write it all under `e2e` in `verification.json`.
+6. **Sanity-check the noise before you trust the margin.** If
+   `gain_exceeds_noise` is false, or `noise_ms` is itself a large fraction of
+   `baseline.avg_step_ms` (a jittery workload — background load, thermal drift, a
+   shared GPU, dataloader stalls), the single run is not a sound basis for the
+   `pct` you measured. Do not silently keep the number: report it with the
+   noise stated, and if the run is cheap, re-run both conditions once on a
+   quiet machine before writing the record. Never widen `MIN_GAIN_PCT` to make
+   a noisy gain pass.
 
 `verification.json` contains measurements only. Its minimal format is in
 [`record_schema.md`](record_schema.md). Never use profiled Nsys step time as

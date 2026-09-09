@@ -18,8 +18,9 @@ Leave a cumulative `loop_<n>/loop.patch` and a re-runnable local accuracy
 checker using representative input contracts.
 
 Run [`verification/`](verification/verification.md): compare writes
-parity and profiler-off E2E to `verification.json`. Correctness plus an E2E
-gain meeting its threshold is the keep gate.
+parity and profiler-off E2E to `verification.json`. That record is
+measurement only — correctness plus an E2E gain meeting its threshold is the
+evidence the Judge weighs, not a keep gate you apply yourself.
 
 Report the root cause, change, Technique signal, parity, Round E2E, and
 remaining same-cause work.

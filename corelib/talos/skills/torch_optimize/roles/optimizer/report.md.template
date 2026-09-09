@@ -44,7 +44,7 @@ is a lost round.
 
 ### 4.2 Verification result (authoritative)
 
-<Paste the actual numbers from the verification record `round_<k>/verification.json` (its `real` + `perf`) so this report is self-contained: forward parity `max_abs` / `max_rel` / `tol`; for training, VJP (or optimizer/gradient update) parity `max_abs` / `max_rel` / `tol`; and end-to-end `origin_ms` → `optimize_ms` with `pct`. `round_<k>/verification.json` stays the machine record of these numbers. If it shows no or negative end-to-end gain, say so plainly.>
+<Paste the actual numbers from the verification record `round_<k>/verification.json` (its `real` + `e2e`) so this report is self-contained: forward parity `max_abs` / `max_rel`; for training, VJP (or optimizer/gradient update) parity `max_abs` / `max_rel`; and end-to-end `baseline.avg_step_ms` → `candidate.avg_step_ms` with `pct` and `meets_min_gain`. State the run's step-to-step noise too (`noise_ms`, `gain_exceeds_noise`) so the Judge can see whether the margin is comfortably above it. `round_<k>/verification.json` stays the machine record of these numbers. If it shows no or negative end-to-end gain, say so plainly.>
 
 ## 5. Keep case (only if local win but no end-to-end gain)
 

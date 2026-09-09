@@ -38,8 +38,10 @@ Target-platform selection:
 
 from __future__ import annotations
 
+import hashlib
 import os
 import platform
+import re
 import shutil
 import sys
 import tarfile
@@ -125,20 +127,46 @@ def _resolve_platform() -> str:
 # Fetch helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _download(url: str, dest: Path) -> None:
+# A single, ordinary path component: no "..", no "/", no absolute paths, no
+# empty names. Archive members are untrusted input.
+_SAFE_COMPONENT = re.compile(r"(?!\.\.?$)[^/\\]+")
+
+
+def _download(url: str, dest: Path, asset: str, digests: dict) -> None:
+    """Fetch ``url`` to ``dest`` and refuse to keep it unless it matches the
+    sha256 pinned for ``asset`` in pyproject.toml's [tool.talos.sha256]."""
+    expected = digests.get(asset)
+    if not expected:
+        raise SystemExit(
+            f"[veloq-build] no sha256 pinned for '{asset}'. Add it under "
+            f"[tool.talos.sha256] in pyproject.toml before building."
+        )
     dest.parent.mkdir(parents=True, exist_ok=True)
     sys.stderr.write(f"[veloq-build] GET {url}\n")
+    digest = hashlib.sha256()
     with urllib.request.urlopen(url) as resp, open(dest, "wb") as out:
-        shutil.copyfileobj(resp, out)
+        for chunk in iter(lambda: resp.read(1 << 20), b""):
+            digest.update(chunk)
+            out.write(chunk)
+    actual = digest.hexdigest()
+    if actual != expected:
+        dest.unlink(missing_ok=True)
+        raise SystemExit(
+            f"[veloq-build] checksum mismatch for {asset}\n"
+            f"  expected {expected}\n  actual   {actual}\n"
+            f"Refusing to package it. Either the release was re-cut (update the "
+            f"pin) or the download was tampered with."
+        )
+    sys.stderr.write(f"[veloq-build] sha256 OK {asset}\n")
 
 
-def _fetch_binary(base_url: str, version: str, asset: str) -> None:
+def _fetch_binary(base_url: str, version: str, asset: str, digests: dict) -> None:
     url = f"{base_url}/{version}/{asset}"
-    _download(url, BIN_DEST)
+    _download(url, BIN_DEST, asset, digests)
     BIN_DEST.chmod(0o755)
 
 
-def _fetch_skills(base_url: str, version: str) -> None:
+def _fetch_skills(base_url: str, version: str, digests: dict) -> None:
     """Pull veloq-skills.tar.gz and explode it under skills/<pkg_name>/.
 
     The tarball entries look like:
@@ -154,18 +182,33 @@ def _fetch_skills(base_url: str, version: str) -> None:
     with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
         tmp_path = Path(tmp.name)
     try:
-        _download(url, tmp_path)
+        _download(url, tmp_path, "veloq-skills.tar.gz", digests)
+        skills_root = SKILLS_ROOT.resolve()
         with tarfile.open(tmp_path, "r:gz") as tar:
             for member in tar.getmembers():
                 parts = Path(member.name).parts
                 if len(parts) < 3 or parts[0] != ".claude" or parts[1] != "skills":
                     continue
                 slug = parts[2]              # e.g. "nsys-profile-analysis"
-                pkg = slug.replace("-", "_")  # e.g. "nsys_profile_analysis"
-                rel = Path(*parts[3:]) if len(parts) > 3 else None
-                if rel is None or str(rel) in (".", ""):
+                if not _SAFE_COMPONENT.fullmatch(slug):
+                    sys.stderr.write(f"[veloq-build] skip unsafe slug: {member.name}\n")
                     continue
-                target = SKILLS_ROOT / pkg / rel
+                pkg = slug.replace("-", "_")  # e.g. "nsys_profile_analysis"
+                rest = parts[3:]
+                if not rest or not all(_SAFE_COMPONENT.fullmatch(c) for c in rest):
+                    if rest:
+                        sys.stderr.write(f"[veloq-build] skip unsafe path: {member.name}\n")
+                    continue
+                target = SKILLS_ROOT / pkg / Path(*rest)
+                # Belt and braces: the component check above already rejects
+                # "..", but confirm the resolved destination stays inside the
+                # package tree before anything is created or opened.
+                try:
+                    resolved = target.resolve()
+                    resolved.relative_to(skills_root / pkg)
+                except (ValueError, OSError):
+                    sys.stderr.write(f"[veloq-build] skip escaping member: {member.name}\n")
+                    continue
                 if member.isdir():
                     target.mkdir(parents=True, exist_ok=True)
                     continue
@@ -198,8 +241,9 @@ class BuildWithVeloq(build_py):
         sys.stderr.write(
             f"[veloq-build] platform={plat_key}  version={version}  asset={asset}\n"
         )
-        _fetch_binary(base_url, version, asset)
-        _fetch_skills(base_url, version)
+        digests = cfg.get("sha256", {})
+        _fetch_binary(base_url, version, asset, digests)
+        _fetch_skills(base_url, version, digests)
         super().run()
 
 

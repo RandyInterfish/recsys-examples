@@ -101,7 +101,7 @@ while True:
 
         **Apply `user_guide.md` when picking the hotspot.** While analyzing, weigh candidates against the focus guidance in `user_guide.md` — the hotspot you dispatch should be the one that best matches the user's stated priorities, not merely the largest row in the trace. Document your choice and the reasoning in `loop_baseline_analysis.md`; only then proceed to step (b).
 
-        **The profiled capture is for attribution, not for gain.** The nsys "typical step" here only locates hotspots; the authoritative end-to-end gain is measured profiler-off by the Optimizer's verification `perf` (`optimization/verification/roles/perf.md`) and recorded in each round's `verification.json`. Use that for keep/stop reasoning, not the profiled typical step.
+        **The profiled capture is for attribution, not for gain.** The nsys "typical step" here only locates hotspots; the authoritative end-to-end gain is measured profiler-off by the Optimizer's verification `e2e` (`optimization/verification/verification.md`) and recorded in each round's `verification.json`. Use that for keep/stop reasoning, not the profiled typical step.
 
    - **(b) Dispatch to the Optimizer.** Create `round_<k>/` under this `loop_<n>/` (`workspace_layout.md` "Naming"; `k` = 1 the first time through this loop, otherwise one more than the last round tried in it) — a subagent's working directory must exist *before* it is spawned. Then spawn a fresh Optimizer subagent into it — a clean context, not a continuation of your own.
 

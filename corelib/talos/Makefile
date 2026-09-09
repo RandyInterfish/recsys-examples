@@ -123,7 +123,7 @@ install-wheel: build
 	fi
 	wheel="$${wheels[0]}"
 	echo ">> installing $$wheel"
-	$(call PIP_INSTALL,--force-reinstall "$$wheel")
+	$(call PIP_INSTALL,--force-reinstall --no-deps "$$wheel")
 	echo ""
 	echo "installed. Link the skills into a project with:"
 	echo "  make install-skills DIR=/path/to/your/project"

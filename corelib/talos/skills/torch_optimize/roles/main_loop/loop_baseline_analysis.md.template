@@ -1,7 +1,7 @@
 # Loop Baseline Analysis — loop_<n>
 
 - **workload:** <one line — model / config being profiled>
-- **baseline step time (profiled reference):** <typical_step.full_duration_ms from basics.json, and how it was picked, e.g. "step 34, median of steps 30–40"> — this is a profiler-on, single-capture reference for locating hotspots, **not** the authoritative gain baseline. Authoritative baseline → optimized latency is measured profiler-off by verification `perf` (see `optimization/verification/roles/perf.md`) and recorded in each round's `verification.json`.
+- **baseline step time (profiled reference):** <typical_step.full_duration_ms from basics.json, and how it was picked, e.g. "step 34, median of steps 30–40"> — this is a profiler-on, single-capture reference for locating hotspots, **not** the authoritative gain baseline. Authoritative baseline → optimized latency is measured profiler-off by verification `e2e` (see `optimization/verification/verification.md`) and recorded in each round's `verification.json`.
 
 > **Output contract — locate only.** This document describes *what / where / why* + evidence. It does **not** choose or name the fix: no technique (compile / fusion / C++ lowering / batching / sync-removal, etc.), no library / API / op, no flag, no implementation approach. Selecting and applying the fix is the Optimizer's job — it runs the dispatch table on your analysis. Your job is to hand it an accurate, technique-agnostic picture of the problem.
 
